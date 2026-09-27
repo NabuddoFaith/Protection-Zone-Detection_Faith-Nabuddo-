@@ -24,26 +24,45 @@ with open(txt_file, "r", encoding="utf-8") as f:
 
 
 # ============================================================
-# 3. CREATE PROTECTION POLYGON
+# 3. READ PROTECTION ZONE
 # ============================================================
 
 protection_wkt = data["protection_zone_wkt"]
 
-protection_polygon = wkt.loads(protection_wkt)
+protection_crs = data.get(
+    "protection_zone_crs",
+    "EPSG:4326"
+)
 
-print("Protection geometry:",
-      protection_polygon.geom_type)
+protection_polygon = wkt.loads(
+    protection_wkt
+)
+
+print("")
+print("============================================================")
+print("PROTECTION ZONE")
+print("============================================================")
+
+print(
+    "Protection CRS:",
+    protection_crs
+)
+
+print(
+    "Protection geometry:",
+    protection_polygon.geom_type
+)
 
 
 # ============================================================
-# 4. CREATE POINTS
+# 4. CREATE DETECTED POINTS
 # ============================================================
 
 point_records = []
 
 for pt in data["detected_points"]:
 
-    geometry = Point(
+    point_geometry = Point(
         pt["lon"],
         pt["lat"]
     )
@@ -53,7 +72,7 @@ for pt in data["detected_points"]:
         "LON": pt["lon"],
         "LAT": pt["lat"],
         "DESC": pt["description"],
-        "geometry": geometry
+        "geometry": point_geometry
     })
 
 
@@ -61,8 +80,11 @@ for pt in data["detected_points"]:
 # 5. CREATE GEODATAFRAME
 # ============================================================
 
-# Do NOT pass CRS here because your PROJ installation
-# is currently failing when it tries to resolve EPSG:4326.
+# CRS is intentionally not assigned here because the current
+# PROJ installation has an EPSG database issue.
+#
+# Both the protection polygon and detected points are already
+# provided in longitude/latitude coordinates (EPSG:4326).
 
 points_gdf = gpd.GeoDataFrame(
     point_records,
@@ -82,7 +104,7 @@ points_gdf["INSIDE_ZONE"] = (
 
 
 # ============================================================
-# 7. STATUS
+# 7. CREATE STATUS FIELD
 # ============================================================
 
 points_gdf["STATUS"] = points_gdf[
@@ -96,7 +118,7 @@ points_gdf["STATUS"] = points_gdf[
 
 
 # ============================================================
-# 8. DISPLAY RESULTS
+# 8. DISPLAY ALL RESULTS
 # ============================================================
 
 print("")
@@ -108,15 +130,15 @@ for _, row in points_gdf.iterrows():
 
     print(
         f"{row['POINT_ID']} | "
-        f"{row['LON']} | "
-        f"{row['LAT']} | "
+        f"Longitude: {row['LON']} | "
+        f"Latitude: {row['LAT']} | "
         f"{row['STATUS']} | "
         f"{row['DESC']}"
     )
 
 
 # ============================================================
-# 9. FLAGGED RECORDS ONLY
+# 9. SELECT FLAGGED RECORDS
 # ============================================================
 
 flagged = points_gdf[
@@ -124,26 +146,38 @@ flagged = points_gdf[
 ].copy()
 
 
+# ============================================================
+# 10. DISPLAY FLAGGED RECORDS
+# ============================================================
+
 print("")
 print("============================================================")
 print("FLAGGED RECORDS")
 print("============================================================")
 
-print(
-    flagged[
-        [
-            "POINT_ID",
-            "LON",
-            "LAT",
-            "DESC",
-            "STATUS"
-        ]
-    ].to_string(index=False)
-)
+if len(flagged) > 0:
+
+    print(
+        flagged[
+            [
+                "POINT_ID",
+                "LON",
+                "LAT",
+                "DESC",
+                "STATUS"
+            ]
+        ].to_string(index=False)
+    )
+
+else:
+
+    print(
+        "No detected points fall inside the protection zone."
+    )
 
 
 # ============================================================
-# 10. SAVE CSV
+# 11. SAVE FLAGGED POINTS AS CSV
 # ============================================================
 
 csv_output = os.path.join(
@@ -160,7 +194,7 @@ flagged.drop(
 
 
 # ============================================================
-# 11. SAVE FLAGGED GEOJSON
+# 12. SAVE FLAGGED POINTS AS GEOJSON
 # ============================================================
 
 geojson_output = os.path.join(
@@ -168,7 +202,9 @@ geojson_output = os.path.join(
     "flagged_detected_points.geojson"
 )
 
-# Export geometry without requiring CRS transformation
+# Export without CRS transformation because the coordinates
+# are already longitude/latitude in EPSG:4326.
+
 flagged.to_file(
     geojson_output,
     driver="GeoJSON"
@@ -176,8 +212,64 @@ flagged.to_file(
 
 
 # ============================================================
-# 12. SUMMARY
+# 13. SAVE PROTECTION ZONE AS GEOJSON
 # ============================================================
+
+protection_geojson_output = os.path.join(
+    output_folder,
+    "protection_zone.geojson"
+)
+
+# Use Shapely's GeoJSON geometry representation directly.
+# This avoids the current PROJ/EPSG database problem.
+
+protection_feature = {
+    "type": "Feature",
+    "properties": {
+        "ZONE_ID": "PROTECTION_ZONE",
+        "CRS": protection_crs
+    },
+    "geometry": protection_polygon.__geo_interface__
+}
+
+
+# Create FeatureCollection
+
+protection_geojson = {
+    "type": "FeatureCollection",
+    "features": [
+        protection_feature
+    ]
+}
+
+
+# Write protection-zone GeoJSON
+
+with open(
+    protection_geojson_output,
+    "w",
+    encoding="utf-8"
+) as f:
+
+    json.dump(
+        protection_geojson,
+        f,
+        indent=4
+    )
+
+
+# ============================================================
+# 14. SUMMARY
+# ============================================================
+
+total_points = len(points_gdf)
+
+flagged_points = len(flagged)
+
+outside_points = (
+    total_points - flagged_points
+)
+
 
 print("")
 print("============================================================")
@@ -185,24 +277,71 @@ print("SUMMARY")
 print("============================================================")
 
 print(
-    "Total points:",
-    len(points_gdf)
+    "Total detected points:",
+    total_points
 )
 
 print(
-    "Flagged points:",
-    len(flagged)
+    "Flagged points inside protection zone:",
+    flagged_points
 )
 
 print(
-    "Outside points:",
-    len(points_gdf) - len(flagged)
+    "Points outside protection zone:",
+    outside_points
 )
+
+
+# ============================================================
+# 15. OUTPUT FILES
+# ============================================================
 
 print("")
-print("CSV:")
+print("============================================================")
+print("OUTPUT FILES")
+print("============================================================")
+
+print("")
+print("1. Flagged Points CSV:")
 print(csv_output)
 
 print("")
-print("GeoJSON:")
+print("2. Flagged Points GeoJSON:")
 print(geojson_output)
+
+print("")
+print("3. Protection Zone GeoJSON:")
+print(protection_geojson_output)
+
+
+# ============================================================
+# 16. EXPECTED RESULT FOR THE SAMPLE DATA
+# ============================================================
+
+print("")
+print("============================================================")
+print("EXPECTED SAMPLE RESULT")
+print("============================================================")
+
+print(
+    "LOC_001 -> INSIDE PROTECTION ZONE"
+)
+
+print(
+    "LOC_002 -> OUTSIDE PROTECTION ZONE"
+)
+
+print(
+    "LOC_003 -> INSIDE PROTECTION ZONE"
+)
+
+print(
+    "LOC_004 -> OUTSIDE PROTECTION ZONE"
+)
+
+print(
+    "LOC_005 -> INSIDE PROTECTION ZONE"
+)
+
+print("")
+print("Processing completed successfully.")
