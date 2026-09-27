@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "flagged_detected_points",
+"features": [
+{ "type": "Feature", "properties": { "POINT_ID": "LOC_001", "LON": 32.59, "LAT": 0.33, "DESC": "Foundation excavation observed", "INSIDE_ZONE": true, "STATUS": "FLAGGED - INSIDE PROTECTION ZONE" }, "geometry": { "type": "Point", "coordinates": [ 32.59, 0.33 ] } },
+{ "type": "Feature", "properties": { "POINT_ID": "LOC_003", "LON": 32.595, "LAT": 0.335, "DESC": "Active bricklaying site", "INSIDE_ZONE": true, "STATUS": "FLAGGED - INSIDE PROTECTION ZONE" }, "geometry": { "type": "Point", "coordinates": [ 32.595, 0.335 ] } },
+{ "type": "Feature", "properties": { "POINT_ID": "LOC_005", "LON": 32.585, "LAT": 0.322, "DESC": "Grading of marshland vegetation", "INSIDE_ZONE": true, "STATUS": "FLAGGED - INSIDE PROTECTION ZONE" }, "geometry": { "type": "Point", "coordinates": [ 32.585, 0.322 ] } }
+]
+}
