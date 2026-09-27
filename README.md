@@ -4,6 +4,8 @@ This project checks whether detected points fall inside a protected polygon and 
 
 ## Overview
 
+![Detected points and protection zone](./Detected%20points.png)
+
 The script reads a JSON payload from `input.txt`, parses the protection polygon from WKT, evaluates each detected point using a point-in-polygon test, and then exports:
 
 - flagged records as CSV
