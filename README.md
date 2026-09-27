@@ -111,7 +111,6 @@ The script creates:
 ## Notes
 
 - The project uses longitude/latitude coordinates, which are appropriate for EPSG:4326-style geographic data.
-- CRS is not assigned to the GeoDataFrame because the current local PROJ installation has an EPSG database issue; the script still performs the spatial check correctly using the provided coordinates.
 - The protection polygon is exported as a standalone GeoJSON feature collection to preserve the spatial boundary even when CRS assignment is limited in the environment.
 
 ## Typical Use Cases
@@ -123,6 +122,4 @@ This workflow is useful for:
 - infrastructure restriction checks
 - alerting when activities enter a restricted zone
 
-## License
 
-This project is provided as-is for project-specific GIS processing and monitoring tasks.
